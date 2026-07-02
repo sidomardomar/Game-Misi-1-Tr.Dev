@@ -189,12 +189,12 @@
                 </div>
                 <div>
                     <label for="input-nik" class="block text-xs font-retro text-pink-500 tracking-wider mb-1 uppercase">NOMOR INDUK KARYAWAN (NIK - 10 DIGIT)</label>
-                    <input type="text" id="input-nik" pattern="\d{10}" maxlength="10" required class="w-full bg-black bg-opacity-50 border border-pink-500 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-pink-500 text-white font-semibold placeholder-gray-600 text-sm" placeholder="Contoh: 2015512345">
+                    <input type="text" id="input-nik" pattern="\d{10}" maxlength="10" required class="w-full bg-black bg-opacity-50 border border-pink-500 rounded-lg py-2 px-3 focus:outline-none focus:ring-2 focus:ring-pink-500 text-white font-semibold placeholder-gray-600 text-sm" placeholder="Contoh: 1234567890">
                     <p id="nik-error" class="text-[10px] text-red-400 mt-1 hidden">⚠️ NIK wajib berisi tepat 10 digit angka saja.</p>
                 </div>
 
                 <button type="submit" class="w-full mt-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-cyan-400 hover:to-indigo-600 text-white font-retro font-bold py-3 rounded-lg shadow-lg hover:shadow-cyan-500/50 transition duration-300 tracking-widest text-sm uppercase">
-                    START THE GAME
+                    MASUKI GERBANG SIMULASI
                 </button>
             </form>
         </section>
@@ -392,9 +392,9 @@
                     </div>
 
                     <!-- GIANT TRIGGER BUTTON -->
-                    <button id="btn-brake" class="w-full flex-grow bg-gradient-to-r from-pink-600 to-purple-800 hover:from-cyan-400 hover:to-indigo-500 text-white font-retro font-bold text-center flex flex-col items-center justify-center p-3 rounded-xl shadow-lg border-2 border-pink-400/30 active:scale-95 transition-all duration-150">
+                    <button id="btn-brake" class="w-full flex-grow bg-gradient-to-r from-pink-600 to-purple-800 hover:from-cyan-400 hover:to-indigo-500 text-white font-retro font-bold text-center flex flex-col items-center justify-center p-3 rounded-xl shadow-lg border-2 border-pink-400/30 active:scale-95 transition-all duration-150 select-none touch-none" style="-webkit-touch-callout: none;">
                         <span class="text-xs tracking-widest uppercase block mb-0.5">TARIK REM DARURAT</span>
-                        <span class="text-[10px] text-pink-200 block bg-black bg-opacity-50 px-3 py-1 rounded-full border border-pink-400/40">KLIK / SPASI</span>
+                        <span class="text-[10px] text-pink-200 block bg-black bg-opacity-50 px-3 py-1 rounded-full border border-pink-400/40">KLIK / SPASI / SENTUH</span>
                     </button>
 
                     <!-- HOLD FEEDBACK PROGRESS BAR -->
@@ -560,7 +560,7 @@
                     filter.frequency.setValueAtTime(400, this.ctx.currentTime);
                     filter.Q.setValueAtTime(1, this.ctx.currentTime);
 
-                    gain.gain.setValueAtTime(1, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(3.5, this.ctx.currentTime);
                     gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
 
                     osc.connect(filter);
@@ -1007,27 +1007,12 @@
             }
         });
 
-        // TRICK: Auto-init Audio pada interaksi pertama (Klik/Tap/Ketik) di area mana pun
-        const startAudioOnFirstInteract = () => {
-            if (!audio.ctx || audio.ctx.state === 'suspended') {
-                audio.init();
-                dom.btnAudioInit.classList.add('hidden');
-                dom.btnMute.classList.remove('hidden');
-            }
-            
-            // Hapus event listener setelah berhasil agar tidak membebani memori
-            document.removeEventListener('click', startAudioOnFirstInteract);
-            document.removeEventListener('keydown', startAudioOnFirstInteract);
-            document.removeEventListener('touchstart', startAudioOnFirstInteract);
-        };
-
-        // Pasang pendeteksi interaksi global
-        document.addEventListener('click', startAudioOnFirstInteract);
-        document.addEventListener('keydown', startAudioOnFirstInteract);
-        document.addEventListener('touchstart', startAudioOnFirstInteract);
-
-        // Jika user tetap mengklik tombol inisiasi manual
-        dom.btnAudioInit.addEventListener('click', startAudioOnFirstInteract);
+        // Initialize Audio Node via User Interaction Gestures
+        dom.btnAudioInit.addEventListener('click', () => {
+            audio.init();
+            dom.btnAudioInit.classList.add('hidden');
+            dom.btnMute.classList.remove('hidden');
+        });
 
         // Mute - Unmute Action
         dom.btnMute.addEventListener('click', () => {
@@ -1182,13 +1167,28 @@
             }
         });
 
-        // Touch/Mouse tap trigger
+        // Release spacebar keyboard binding
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'Space' && qteActive) {
+                endHoldTrigger();
+            }
+        });
+
+        // Touch/Mouse tap trigger (Desktop)
         dom.btnBrake.addEventListener('mousedown', (e) => {
             e.preventDefault();
             if (qteActive) {
                 executeEmergencyBrakeTrigger();
             }
         });
+
+        // Mobile touch trigger (Handphone)
+        dom.btnBrake.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Stop default browser behaviors
+            if (qteActive) {
+                executeEmergencyBrakeTrigger();
+            }
+        }, { passive: false });
 
         // Mouseup & Touchend to clear holding pattern
         const endHoldTrigger = () => {
@@ -1209,6 +1209,7 @@
         dom.btnBrake.addEventListener('mouseup', endHoldTrigger);
         dom.btnBrake.addEventListener('mouseleave', endHoldTrigger);
         dom.btnBrake.addEventListener('touchend', endHoldTrigger);
+        dom.btnBrake.addEventListener('touchcancel', endHoldTrigger); // Tangani jika sentuhan terpotong
 
         // Core QTE Stepping Engine
         function executeEmergencyBrakeTrigger() {
